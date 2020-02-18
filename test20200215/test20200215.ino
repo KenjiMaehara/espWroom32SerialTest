@@ -1,50 +1,96 @@
-String sendstr = "arduino000";
-String sendstr01 = "arduino001";
-String sendstr02 = "arduino002";
+#if CONFIG_FREERTOS_UNICORE
+#define ARDUINO_RUNNING_CORE 0
+#else
+#define ARDUINO_RUNNING_CORE 1
+#endif
 
+#ifndef LED_BUILTIN
+#define LED_BUILTIN 13
+#endif
+
+// define two tasks for Blink & AnalogRead
+void TaskBlink( void *pvParameters );
+void TaskAnalogReadA3( void *pvParameters );
+
+// the setup function runs once when you press reset or power the board
 void setup() {
-  // initialize both serial ports:
+  
+  // initialize serial communication at 115200 bits per second:
+  Serial.begin(115200);
+  
+  // Now set up two tasks to run independently.
+  xTaskCreatePinnedToCore(
+    TaskBlink
+    ,  "TaskBlink"   // A name just for humans
+    ,  1024  // This stack size can be checked & adjusted by reading the Stack Highwater
+    ,  NULL
+    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  NULL 
+    ,  ARDUINO_RUNNING_CORE);
 
-  #if 1
-  Serial.begin(9600);
-  Serial1.begin(9600,SERIAL_8N1,4,0);
-  Serial2.begin(9600);
-  #endif
+  xTaskCreatePinnedToCore(
+    TaskAnalogReadA3
+    ,  "AnalogReadA3"
+    ,  1024  // Stack size
+    ,  NULL
+    ,  1  // Priority
+    ,  NULL 
+    ,  ARDUINO_RUNNING_CORE);
 
-  pinMode(2,OUTPUT);
+  // Now the task scheduler, which takes over control of scheduling individual tasks, is automatically started.
 }
 
-void loop() {
+void loop()
+{
+  // Empty. Things are done in Tasks.
+}
 
-  // read from port 1, send to port 0:
-  if (Serial1.available()) {
-    int inByte = Serial1.read();
-    Serial.write(inByte);
+/*--------------------------------------------------*/
+/*---------------------- Tasks ---------------------*/
+/*--------------------------------------------------*/
+
+void TaskBlink(void *pvParameters)  // This is a task.
+{
+  (void) pvParameters;
+
+/*
+  Blink
+  Turns on an LED on for one second, then off for one second, repeatedly.
+    
+  If you want to know what pin the on-board LED is connected to on your ESP32 model, check
+  the Technical Specs of your board.
+*/
+
+  // initialize digital LED_BUILTIN on pin 13 as an output.
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  for (;;) // A Task shall never return or exit.
+  {
+    digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
+    vTaskDelay(100);  // one tick delay (15ms) in between reads for stability
+    digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
+    vTaskDelay(100);  // one tick delay (15ms) in between reads for stability
   }
+}
+
+void TaskAnalogReadA3(void *pvParameters)  // This is a task.
+{
+  (void) pvParameters;
   
+/*
+  AnalogReadSerial
+  Reads an analog input on pin A3, prints the result to the serial monitor.
+  Graphical representation is available using serial plotter (Tools > Serial Plotter menu)
+  Attach the center pin of a potentiometer to pin A3, and the outside pins to +5V and ground.
+  This example code is in the public domain.
+*/
 
-    #if 0
-    for (int i = 0; i < sendstr.length(); i++){
-       Serial.write(sendstr.charAt(i)); 
-    }
-
-    for (int i = 0; i < sendstr01.length(); i++){
-       Serial1.write(sendstr01.charAt(i)); 
-    }
-
-    for (int i = 0; i < sendstr02.length(); i++){
-       Serial2.write(sendstr02.charAt(i)); 
-    }
-    #endif
-  
-
-
-
-  #if 0
-  digitalWrite(2,HIGH);
-  delay(500);
-  digitalWrite(2,LOW); 
-
-  delay(1000);
-  #endif
+  for (;;)
+  {
+    // read the input on analog pin A3:
+    int sensorValueA3 = analogRead(A3);
+    // print out the value you read:
+    Serial.println(sensorValueA3);
+    vTaskDelay(10);  // one tick delay (15ms) in between reads for stability
+  }
 }
