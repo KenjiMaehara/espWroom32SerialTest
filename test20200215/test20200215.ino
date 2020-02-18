@@ -16,7 +16,14 @@ void setup() {
 
 void loop() {
 
+  // read from port 1, send to port 0:
+  if (Serial1.available()) {
+    int inByte = Serial1.read();
+    Serial.write(inByte);
+  }
+  
 
+    #if 0
     for (int i = 0; i < sendstr.length(); i++){
        Serial.write(sendstr.charAt(i)); 
     }
@@ -28,14 +35,16 @@ void loop() {
     for (int i = 0; i < sendstr02.length(); i++){
        Serial2.write(sendstr02.charAt(i)); 
     }
+    #endif
   
 
 
 
-
+  #if 0
   digitalWrite(2,HIGH);
   delay(500);
   digitalWrite(2,LOW); 
 
   delay(1000);
+  #endif
 }
